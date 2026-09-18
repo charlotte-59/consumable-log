@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>きらすまえに</title>
 <meta name="description" content="シェアハウスの消耗品の購入サイクルを記録し、なくなる前に知らせてくれる在庫管理アプリ">
 <meta name="theme-color" content="#0F6E5D">
@@ -60,9 +60,10 @@
   }
 
   *{box-sizing:border-box;}
-  html,body{height:100%;}
+  html,body{height:100%;touch-action:pan-y;-ms-touch-action:pan-y;}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif;-webkit-font-smoothing:antialiased;
-    padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+    padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+    overscroll-behavior:none;-webkit-text-size-adjust:100%;text-size-adjust:100%;}
   #app{display:flex;flex-direction:column;height:100%;max-width:560px;margin:0 auto;position:relative;}
   h1,h2,h3{font-family:"Zen Maru Gothic","Noto Sans JP",sans-serif;margin:0;text-wrap:balance;}
   button{font-family:inherit;}
@@ -544,15 +545,15 @@
       const mx = e.clientX-startX, my = e.clientY-startY;
       if(dragging===null){
         if(Math.abs(mx)<6 && Math.abs(my)<6) return;
-        dragging = Math.abs(mx) > Math.abs(my);
+        dragging = Math.abs(mx) > Math.abs(my)*1.1;
         if(dragging){ try{ content.setPointerCapture(pointerId); }catch(err){} }
       }
       if(!dragging) return;
       dx = Math.max(0, Math.min(MAX, mx));
       content.style.transition = "";
       content.style.transform = "translateX("+dx+"px)";
-      e.preventDefault();
-    });
+      if(e.cancelable) e.preventDefault();
+    }, {passive:false});
     function finish(e){
       if(pointerId===null || (e.pointerId!==undefined && e.pointerId!==pointerId)) return;
       const wasDragging = dragging, wasFar = dx>=THRESHOLD;
@@ -568,6 +569,7 @@
     }
     content.addEventListener("pointerup", finish);
     content.addEventListener("pointercancel", finish);
+    content.addEventListener("pointerleave", (e)=>{ if(dragging) finish(e); });
   }
 
   function openItemForm(existing){
@@ -749,6 +751,16 @@
   $$("#tabbar button").forEach(b=> b.onclick=()=> switchTab(b.dataset.tab));
   mainEl.addEventListener("scroll", ()=>{ topbar.classList.toggle("scrolled", mainEl.scrollTop>2); });
   switchTab("dashboard");
+
+  // ピンチズーム・ダブルタップズームを完全に無効化（iOS Safariの保険。縦スクロールのみ許可）
+  document.addEventListener("gesturestart", e=> e.preventDefault());
+  document.addEventListener("gesturechange", e=> e.preventDefault());
+  let lastTapTime = 0;
+  document.addEventListener("touchend", (e)=>{
+    const now = Date.now();
+    if(now - lastTapTime < 300) e.preventDefault();
+    lastTapTime = now;
+  }, {passive:false});
 
   fetchAll();
   setInterval(fetchAll, 25000);
