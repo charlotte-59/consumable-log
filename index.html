@@ -269,6 +269,8 @@
   const CONFIG = {
     API_URL: "https://script.google.com/macros/s/AKfycbwQnmvU0mye92QJfLzICgsWjbIPOWE9Fw-NJbgV3VO3uZJXzTUtqXf9OLQMLc5ki7Pb/exec"
   };
+  // デプロイが反映されているか確認用のバージョン表示（設定タブに表示されます）。更新のたびに上げてください。
+  const APP_VERSION = "1.1.0";
 
   const ICON = {
     plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
@@ -502,6 +504,8 @@
     $$(".chip").forEach(c=>c.onclick=()=>{ state.filterCat=c.dataset.key; renderItems(); });
     $("#addItemBtn").onclick = openItemForm;
     $$(".icard[data-item]").forEach(card=>{
+      const content = card.querySelector(".icard-content");
+      wireSwipeToDelete(card, content, card.dataset.item);
       card.querySelector(".title").onclick = ()=> openItemDetail(card.dataset.item);
       const buyBtn = card.querySelector("[data-act=buy]"); const emptyBtn = card.querySelector("[data-act=empty]");
       if(buyBtn) buyBtn.onclick=(e)=>{e.stopPropagation(); openPurchaseForm(card.dataset.item);};
@@ -514,11 +518,56 @@
     const stCls = st==="critical"?"st-critical":st==="warning"?"st-warning":st==="good"?"st-good":"";
     const pillCls = st==="critical"?"critical":st==="warning"?"warning":st==="good"?"good":"muted";
     let daysTxt = st==="unknown"?"記録なし":st==="learning"?"学習中":(a.daysRemaining<=0?"購入時期":"あと約"+a.daysRemaining+"日");
-    return '<div class="icard '+stCls+'" data-item="'+item.id+'">'
+    return '<div class="icard swipeable" data-item="'+item.id+'">'
+      + '<div class="icard-swipebg">'+ICON.trash+'<span>削除</span></div>'
+      + '<div class="icard-content '+stCls+'" data-swipe>'
       + '<div class="row1"><div class="title"><span class="catdot" style="background:'+catColor(item.category)+'"></span><span class="iname">'+esc(item.name)+'</span></div><span class="pill '+pillCls+'">'+daysTxt+'</span></div>'
       + (a.avgCycle ? '<div class="bar-track"><div class="bar-fill '+pillCls+'" style="width:'+a.progressPct.toFixed(0)+'%"></div></div>' : '')
       + '<div class="meta"><span>前回購入 '+fmtDate(a.lastPurchase)+'</span>'+(a.avgCycle? '<span>平均 約'+Math.round(a.avgCycle)+'日周期</span>':'')+'</div>'
-      + '<div class="actions"><button class="icon-btn primary" data-act="buy">'+ICON.cart+'購入した</button><button class="icon-btn" data-act="empty">'+ICON.empty+'使い切った</button></div></div>';
+      + '<div class="actions"><button class="icon-btn primary" data-act="buy">'+ICON.cart+'購入した</button><button class="icon-btn" data-act="empty">'+ICON.empty+'使い切った</button></div>'
+      + '</div></div>';
+  }
+  function wireSwipeToDelete(card, content, itemId){
+    const THRESHOLD = 64, MAX = 96;
+    let startX=0, startY=0, dx=0, dragging=null, pointerId=null;
+    function reset(){
+      content.style.transition = "transform .2s ease";
+      content.style.transform = "translateX(0px)";
+      setTimeout(()=>{ content.style.transition=""; }, 220);
+    }
+    content.addEventListener("pointerdown", (e)=>{
+      if(e.pointerType==="mouse" && e.button!==0) return;
+      startX = e.clientX; startY = e.clientY; dx=0; dragging=null; pointerId=e.pointerId;
+    });
+    content.addEventListener("pointermove", (e)=>{
+      if(pointerId===null || e.pointerId!==pointerId) return;
+      const mx = e.clientX-startX, my = e.clientY-startY;
+      if(dragging===null){
+        if(Math.abs(mx)<6 && Math.abs(my)<6) return;
+        dragging = Math.abs(mx) > Math.abs(my);
+        if(dragging){ try{ content.setPointerCapture(pointerId); }catch(err){} }
+      }
+      if(!dragging) return;
+      dx = Math.max(0, Math.min(MAX, mx));
+      content.style.transition = "";
+      content.style.transform = "translateX("+dx+"px)";
+      e.preventDefault();
+    });
+    function finish(e){
+      if(pointerId===null || (e.pointerId!==undefined && e.pointerId!==pointerId)) return;
+      const wasDragging = dragging, wasFar = dx>=THRESHOLD;
+      pointerId=null; dragging=null;
+      reset();
+      if(!wasDragging || !wasFar) return;
+      const item = state.items.find(i=>i.id===itemId);
+      confirmDialog('「'+(item?esc(item.name):"")+'」を削除しますか？記録は残りますが一覧に表示されなくなります。', async ()=>{
+        await deleteItem(itemId);
+        closeModal();
+        showToast("削除しました");
+      });
+    }
+    content.addEventListener("pointerup", finish);
+    content.addEventListener("pointercancel", finish);
   }
 
   function openItemForm(existing){
@@ -643,7 +692,7 @@
       + '<button class="ghost-btn" id="exportBtn">'+ICON.download+' CSVでエクスポート</button>'
       + '<button class="danger-btn" id="resetBtn">すべてのデータをリセット</button></div></div>';
     html += '<div class="set-group"><h3>接続情報</h3><div class="about">データの保存先：Google スプレッドシート（Google Apps Script 経由）<br>接続状態：'+(state.online? '<span style="color:var(--good)">接続中</span>' : '<span style="color:var(--critical)">未接続</span>')+'</div></div>';
-    html += '<div class="about" style="text-align:center;">きらすまえに ・ シェアハウスの消耗品を、無くなる前に。</div>';
+    html += '<div class="about" style="text-align:center;">きらすまえに ・ シェアハウスの消耗品を、無くなる前に。<br><span class="num">Ver.'+APP_VERSION+'</span></div>';
     mainEl.innerHTML = html;
 
     $("#sHouse").onblur = e=> saveSettings({houseName: e.target.value.trim()||"わが家"});
