@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>きらすまえに</title>
+<meta name="description" content="シェアハウスの消耗品の購入サイクルを記録し、なくなる前に知らせてくれる在庫管理アプリ">
+<meta name="theme-color" content="#0F6E5D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="きらすまえに">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#F5F6F1;
+    --surface:#FFFFFF;
+    --surface-alt:#ECEEE6;
+    --ink:#1F2A22;
+    --ink-2:#57685C;
+    --ink-3:#8B978B;
+    --border:#DEE3D8;
+    --accent:#0F6E5D;
+    --accent-ink:#0A5347;
+    --accent-soft:#DCEEE8;
+    --good:#2F8F5B;
+    --good-soft:#E1F1E7;
+    --warning:#B5790F;
+    --warning-soft:#F7EBD6;
+    --critical:#C0402F;
+    --critical-soft:#F8E2DE;
+    --cat-consumable:#0F8A73;
+    --cat-food:#C17A1F;
+    --cat-seasoning:#A0449C;
+    --shadow: 0 1px 2px rgba(31,42,34,0.06), 0 6px 16px rgba(31,42,34,0.05);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#12160F; --surface:#1B211A; --surface-alt:#232A21;
+      --ink:#E8EDE4; --ink-2:#AAB6A4; --ink-3:#76826F; --border:#2E362A;
+      --accent:#4FB39B; --accent-ink:#7ECDB8; --accent-soft:#1E3A32;
+      --good:#57C285; --good-soft:#1E3428; --warning:#E0A83D; --warning-soft:#3A2E17;
+      --critical:#E2725F; --critical-soft:#3B211D;
+      --cat-consumable:#269E86; --cat-food:#B87A2A; --cat-seasoning:#A0569D;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#12160F; --surface:#1B211A; --surface-alt:#232A21;
+    --ink:#E8EDE4; --ink-2:#AAB6A4; --ink-3:#76826F; --border:#2E362A;
+    --accent:#4FB39B; --accent-ink:#7ECDB8; --accent-soft:#1E3A32;
+    --good:#57C285; --good-soft:#1E3428; --warning:#E0A83D; --warning-soft:#3A2E17;
+    --critical:#E2725F; --critical-soft:#3B211D;
+    --cat-consumable:#269E86; --cat-food:#B87A2A; --cat-seasoning:#A0569D;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 20px rgba(0,0,0,0.35);
+    color-scheme: dark;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans JP","Hiragino Kaku Gothic ProN",sans-serif;-webkit-font-smoothing:antialiased;
+    padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+  #app{display:flex;flex-direction:column;height:100%;max-width:560px;margin:0 auto;position:relative;}
+  h1,h2,h3{font-family:"Zen Maru Gothic","Noto Sans JP",sans-serif;margin:0;text-wrap:balance;}
+  button{font-family:inherit;}
+  input,select{font-family:inherit;}
+  .num{font-family:"JetBrains Mono","Noto Sans JP",monospace;font-variant-numeric:tabular-nums;}
+  [hidden]{display:none!important;}
+  ::-webkit-scrollbar{width:0;height:0;}
+
+  header.topbar{position:sticky;top:0;z-index:20;padding:14px 18px 12px;background:var(--bg);display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:1px solid transparent;}
+  header.topbar.scrolled{border-bottom-color:var(--border);}
+  .brand{display:flex;flex-direction:column;gap:1px;}
+  .brand .name{font-family:"Zen Maru Gothic";font-weight:700;font-size:19px;letter-spacing:.01em;color:var(--ink);}
+  .brand .house{font-size:11.5px;color:var(--ink-3);}
+  .today{font-size:11.5px;color:var(--ink-3);}
+
+  main{flex:1;overflow-y:auto;padding:4px 18px 28px;-webkit-overflow-scrolling:touch;}
+  .screen-title{font-size:13px;font-weight:600;color:var(--ink-2);margin:10px 2px 12px;display:flex;align-items:center;justify-content:space-between;}
+
+  nav.tabbar{position:sticky;bottom:0;z-index:20;display:flex;background:var(--surface);border-top:1px solid var(--border);padding-bottom:env(safe-area-inset-bottom,0px);}
+  nav.tabbar button{flex:1;background:none;border:none;padding:9px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--ink-3);cursor:pointer;}
+  nav.tabbar button svg{width:22px;height:22px;}
+  nav.tabbar button span{font-size:10.5px;font-weight:500;}
+  nav.tabbar button.active{color:var(--accent);}
+  nav.tabbar button.active svg{stroke:var(--accent);}
+
+  .stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px;}
+  .stat-row.two{grid-template-columns:repeat(2,1fr);}
+  .stat-tile{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 10px;display:flex;flex-direction:column;gap:2px;box-shadow:var(--shadow);}
+  .stat-tile .v{font-size:21px;font-weight:600;line-height:1.15;}
+  .stat-tile .l{font-size:11px;color:var(--ink-3);}
+
+  section.block{margin-bottom:22px;}
+  section.block > h2{font-size:14.5px;font-weight:700;margin-bottom:2px;}
+  section.block > .sub{font-size:11.5px;color:var(--ink-3);margin-bottom:10px;}
+
+  .empty-note{border:1px dashed var(--border);border-radius:14px;padding:22px 16px;text-align:center;color:var(--ink-3);font-size:12.5px;line-height:1.7;}
+  .empty-note button{margin-top:10px;}
+
+  .card-list{display:flex;flex-direction:column;gap:8px;}
+  .icard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:12px 13px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;}
+  .icard::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:transparent;}
+  .icard.st-critical::before{background:var(--critical);}
+  .icard.st-warning::before{background:var(--warning);}
+  .icard.st-good::before{background:var(--good);}
+  .icard .row1{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+  .icard .title{display:flex;align-items:center;gap:7px;min-width:0;}
+  .catdot{width:8px;height:8px;border-radius:50%;flex:none;}
+  .icard .iname{font-weight:600;font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .pill{font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:99px;white-space:nowrap;}
+  .pill.critical{background:var(--critical-soft);color:var(--critical);}
+  .pill.warning{background:var(--warning-soft);color:var(--warning);}
+  .pill.good{background:var(--good-soft);color:var(--good);}
+  .pill.muted{background:var(--surface-alt);color:var(--ink-3);}
+  .meta{font-size:11px;color:var(--ink-3);display:flex;gap:10px;flex-wrap:wrap;}
+  .bar-track{height:6px;border-radius:99px;background:var(--surface-alt);overflow:hidden;}
+  .bar-fill{height:100%;border-radius:99px;}
+  .bar-fill.critical{background:var(--critical);}
+  .bar-fill.warning{background:var(--warning);}
+  .bar-fill.good{background:var(--accent);}
+  .icard .actions{display:flex;gap:6px;}
+  .icon-btn{border:1px solid var(--border);background:var(--surface);color:var(--ink-2);border-radius:10px;padding:6px 10px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:5px;cursor:pointer;}
+  .icon-btn svg{width:14px;height:14px;}
+  .icon-btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .icon-btn:active{transform:scale(0.97);}
+
+  .anomaly-row{background:var(--warning-soft);border-radius:14px;padding:11px 13px;display:flex;align-items:center;gap:10px;}
+  .anomaly-row svg{width:18px;height:18px;color:var(--warning);flex:none;}
+  .anomaly-row .t{font-size:13px;font-weight:600;}
+  .anomaly-row .t small{display:block;font-weight:400;color:var(--ink-2);font-size:11px;margin-top:1px;}
+
+  .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;margin-bottom:12px;}
+  .chip{flex:none;border:1px solid var(--border);background:var(--surface);color:var(--ink-2);padding:6px 13px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .chip.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink);}
+
+  .fab-add{width:100%;border:1.5px dashed var(--border);background:transparent;color:var(--ink-2);border-radius:14px;padding:13px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;margin-top:4px;}
+  .fab-add svg{width:16px;height:16px;}
+
+  .cost-row{margin-bottom:14px;}
+  .cost-row .l1{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:5px;}
+  .cost-row .nm{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;min-width:0;}
+  .cost-row .nm span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cost-row .yen{font-size:13px;font-weight:600;flex:none;}
+  .cost-row .yen small{color:var(--ink-3);font-weight:500;font-size:10.5px;}
+  .cost-bar-track{height:9px;border-radius:99px;background:var(--surface-alt);}
+  .cost-bar-fill{height:100%;border-radius:99px;}
+  .legend{display:flex;gap:14px;margin:2px 0 16px;flex-wrap:wrap;}
+  .legend .li{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-2);}
+  .legend .dot{width:9px;height:9px;border-radius:50%;}
+
+  table.plain{width:100%;border-collapse:collapse;font-size:12px;}
+  table.plain th{text-align:left;color:var(--ink-3);font-weight:600;font-size:10.5px;padding:6px 4px;border-bottom:1px solid var(--border);}
+  table.plain td{padding:8px 4px;border-bottom:1px solid var(--border);}
+  .tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);background:var(--surface);padding:2px 10px;}
+
+  .set-group{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:16px;box-shadow:var(--shadow);}
+  .set-group h3{font-size:12px;font-weight:700;color:var(--ink-2);padding:12px 14px 4px;}
+  .set-row{padding:11px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .set-row:first-of-type{border-top:none;}
+  .set-row .lab{font-size:13px;font-weight:500;}
+  .set-row .hint{font-size:11px;color:var(--ink-3);margin-top:2px;}
+  .set-row input[type=text],.set-row input[type=email],.set-row input[type=number]{border:1px solid var(--border);border-radius:9px;padding:7px 9px;font-size:13px;background:var(--bg);color:var(--ink);width:140px;text-align:right;}
+  .set-row.stack{flex-direction:column;align-items:stretch;}
+  .set-row.stack input{width:100%;text-align:left;}
+  .switch{position:relative;width:42px;height:25px;flex:none;}
+  .switch input{opacity:0;width:0;height:0;}
+  .switch .track{position:absolute;inset:0;background:var(--surface-alt);border:1px solid var(--border);border-radius:99px;transition:.15s;cursor:pointer;}
+  .switch .track::after{content:"";position:absolute;width:19px;height:19px;left:2px;top:2px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.25);}
+  .switch input:checked + .track{background:var(--accent);border-color:var(--accent);}
+  .switch input:checked + .track::after{transform:translateX(17px);}
+  .cat-edit-row{display:flex;align-items:center;gap:8px;padding:9px 14px;border-top:1px solid var(--border);}
+  .cat-edit-row:first-of-type{border-top:none;}
+  .cat-edit-row input{flex:1;border:1px solid var(--border);border-radius:9px;padding:6px 9px;font-size:13px;background:var(--bg);color:var(--ink);}
+  .cat-edit-row button{border:none;background:none;color:var(--ink-3);cursor:pointer;padding:4px;}
+  .cat-edit-row button svg{width:16px;height:16px;}
+  .danger-btn{width:100%;border:1px solid var(--critical);color:var(--critical);background:var(--critical-soft);border-radius:11px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;}
+  .ghost-btn{width:100%;border:1px solid var(--border);color:var(--ink-2);background:var(--surface);border-radius:11px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;}
+  .ghost-btn svg{width:15px;height:15px;}
+  .about{font-size:11.5px;color:var(--ink-3);line-height:1.8;padding:12px 14px;}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(15,20,14,.42);z-index:50;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .15s;}
+  .modal-overlay.open{opacity:1;pointer-events:auto;}
+  .modal-panel{width:100%;max-width:560px;max-height:88vh;overflow-y:auto;background:var(--surface);border-radius:20px 20px 0 0;padding:16px 18px calc(20px + env(safe-area-inset-bottom,0px));transform:translateY(16px);transition:transform .18s;box-shadow:0 -8px 30px rgba(0,0,0,.18);}
+  .modal-overlay.open .modal-panel{transform:translateY(0);}
+  .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .modal-head h3{font-size:16px;font-weight:700;}
+  .modal-head button{border:none;background:var(--surface-alt);color:var(--ink-2);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;}
+  .modal-head button svg{width:15px;height:15px;}
+  .field{margin-bottom:13px;}
+  .field label{display:block;font-size:11.5px;font-weight:600;color:var(--ink-2);margin-bottom:5px;}
+  .field input,.field select,.field textarea{width:100%;border:1px solid var(--border);border-radius:10px;padding:9px 11px;font-size:14px;background:var(--bg);color:var(--ink);}
+  .field .radio-group{display:flex;gap:6px;flex-wrap:wrap;}
+  .field .radio-chip{border:1px solid var(--border);border-radius:99px;padding:6px 12px;font-size:12.5px;cursor:pointer;background:var(--surface);color:var(--ink-2);display:flex;align-items:center;gap:5px;}
+  .field .radio-chip input{width:auto;}
+  .field .radio-chip.checked{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink);}
+  .modal-actions{display:flex;gap:8px;margin-top:16px;}
+  .btn{flex:1;border:none;border-radius:11px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;}
+  .btn.primary{background:var(--accent);color:#fff;}
+  .btn.secondary{background:var(--surface-alt);color:var(--ink);}
+  .btn.danger{background:var(--critical-soft);color:var(--critical);}
+  .sparkline{width:100%;height:44px;}
+
+  .toast{position:fixed;left:50%;bottom:calc(78px + env(safe-area-inset-bottom,0px));transform:translateX(-50%) translateY(8px);background:var(--ink);color:var(--bg);font-size:12.5px;font-weight:500;padding:9px 16px;border-radius:99px;z-index:80;opacity:0;transition:opacity .15s, transform .15s;pointer-events:none;box-shadow:0 8px 20px rgba(0,0,0,.2);}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  .skel{background:linear-gradient(90deg,var(--surface-alt) 25%,var(--border) 37%,var(--surface-alt) 63%);background-size:400% 100%;animation:skel 1.4s ease infinite;border-radius:14px;}
+  @keyframes skel{0%{background-position:100% 50%}100%{background-position:0 50%}}
+  @media (prefers-reduced-motion: reduce){ .skel{animation:none;} * {transition:none!important;} }
+
+  .setup-screen{padding:60px 22px;text-align:center;color:var(--ink-2);font-size:13px;line-height:1.9;}
+  .setup-screen code{display:block;background:var(--surface-alt);border-radius:8px;padding:8px 10px;margin:10px 0;font-size:11.5px;text-align:left;word-break:break-all;color:var(--ink);}
+  .sync-dot{width:7px;height:7px;border-radius:50%;background:var(--ink-3);display:inline-block;margin-right:5px;}
+  .sync-dot.ok{background:var(--good);}
+  .sync-dot.err{background:var(--critical);}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="topbar" id="topbar">
+    <div class="brand">
+      <div class="name">きらすまえに</div>
+      <div class="house" id="houseLabel"><span class="sync-dot" id="syncDot"></span><span id="houseText">わが家</span></div>
+    </div>
+    <div class="today" id="todayLabel"></div>
+  </header>
+  <main id="main"></main>
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="dashboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v9a1 1 0 0 0 1 1h3v-6h4v6h3a1 1 0 0 0 1-1v-9"/></svg>
+      <span>ホーム</span>
+    </button>
+    <button data-tab="items">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8l9-4 9 4-9 4-9-4z"/><path d="M3 8v8l9 4 9-4V8"/><path d="M12 12v8"/></svg>
+      <span>消耗品</span>
+    </button>
+    <button data-tab="cost">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 8h4.5a2 2 0 0 1 0 4H9m0 0h6M9 12v5m0-9v1"/></svg>
+      <span>費用</span>
+    </button>
+    <button data-tab="settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><circle cx="14" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="8" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="16" cy="18" r="2"/></svg>
+      <span>設定</span>
+    </button>
+  </nav>
+  <div class="modal-overlay" id="modalOverlay"><div class="modal-panel" id="modalPanel"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* =========================================================
+     ここにGoogle Apps ScriptのウェブアプリURLを貼り付けてください。
+     デプロイ手順は README.md を参照してください。
+     ========================================================= */
+  const CONFIG = {
+    API_URL: "PASTE_YOUR_GAS_WEB_APP_URL_HERE"
+  };
+
+  const ICON = {
+    plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><path d="M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/></svg>',
+    pencil:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11a1.5 1.5 0 0 0 0-2.1l-1.9-1.9a1.5 1.5 0 0 0-2.1 0L4 15l-1 5z"/></svg>',
+    download:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"/><polyline points="7 11 12 16 17 11"/><path d="M4 19h16"/></svg>',
+    alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2 20h20L12 4z"/><line x1="12" y1="10" x2="12" y2="14.5"/><circle cx="12" cy="17.3" r="0.6" fill="currentColor" stroke="none"/></svg>',
+    cart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1"/><circle cx="17" cy="20" r="1"/><path d="M2 3h2l2.4 12.1a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 2-1.6L20 7H6"/></svg>',
+    empty:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11a2 2 0 0 1-2 1.8H8.2a2 2 0 0 1-2-1.8L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/><line x1="9" y1="12" x2="15" y2="16"/><line x1="15" y1="12" x2="9" y2="16"/></svg>',
+  };
+
+  const DEFAULT_SETTINGS = {
+    houseName:"わが家",
+    emailEnabled:false,
+    emailAddress:"",
+    defaultReminderDays:3,
+    categories:[
+      {key:"consumable",label:"消耗品",color:"var(--cat-consumable)"},
+      {key:"food",label:"食材",color:"var(--cat-food)"},
+      {key:"seasoning",label:"調味料",color:"var(--cat-seasoning)"}
+    ]
+  };
+  function catColor(key){ const c=(state.settings.categories||[]).find(c=>c.key===key); return c? c.color : "var(--ink-3)"; }
+  function catLabel(key){ const c=(state.settings.categories||[]).find(c=>c.key===key); return c? c.label : "未分類"; }
+
+  const state = {
+    tab:"dashboard",
+    ready:false,
+    online:null,
+    items:[],
+    records:[],
+    settings: Object.assign({}, DEFAULT_SETTINGS),
+    filterCat:"all",
+  };
+
+  const $ = sel => document.querySelector(sel);
+  function $$(sel){ return Array.from(document.querySelectorAll(sel)); }
+  const mainEl = $("#main");
+  const topbar = $("#topbar");
+  const houseText = $("#houseText");
+  const todayLabel = $("#todayLabel");
+  const syncDot = $("#syncDot");
+
+  function todayStr(){ const d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+  function parseDate(s){ return new Date(s+"T00:00:00"); }
+  function dayDiff(a,b){ return Math.round((parseDate(b)-parseDate(a))/86400000); }
+  function fmtDate(s){ if(!s) return "—"; const d=parseDate(s); return (d.getMonth()+1)+"/"+d.getDate(); }
+  function fmtDateLong(){ const d=new Date(); const wd=["日","月","火","水","木","金","土"][d.getDay()]; return (d.getMonth()+1)+"月"+d.getDate()+"日（"+wd+"）"; }
+  function yen(n){ return "¥"+Math.round(n).toLocaleString("ja-JP"); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+  /* ---------- prediction engine ---------- */
+  function itemRecords(itemId){ return state.records.filter(r=>r.itemId===itemId).sort((a,b)=>a.date<b.date?-1:1); }
+  function purchaseDates(itemId){ return itemRecords(itemId).filter(r=>r.type==="purchase").map(r=>r.date); }
+  function analyze(item){
+    const dates = purchaseDates(item.id);
+    const n = dates.length;
+    const today = todayStr();
+    if(n===0) return {status:"unknown", lastPurchase:null, avgCycle:null, daysRemaining:null, progressPct:0, anomaly:null, cycles:[]};
+    const lastPurchase = dates[n-1];
+    if(n===1) return {status:"learning", lastPurchase, avgCycle:null, daysRemaining:null, progressPct:0, anomaly:null, cycles:[]};
+    const cycles = [];
+    for(let i=1;i<n;i++) cycles.push(dayDiff(dates[i-1],dates[i]));
+    const decay = 0.7;
+    let wsum=0, vsum=0;
+    for(let i=0;i<cycles.length;i++){ const w = Math.pow(decay, cycles.length-1-i); wsum += w; vsum += w*cycles[i]; }
+    const avgCycle = vsum/wsum;
+    const elapsed = dayDiff(lastPurchase, today);
+    const daysRemaining = Math.round(avgCycle - elapsed);
+    const reminderDays = item.reminderDays!=null && item.reminderDays!=="" ? Number(item.reminderDays) : state.settings.defaultReminderDays;
+    let status = "good";
+    if(daysRemaining<=0) status="critical"; else if(daysRemaining<=reminderDays) status="warning";
+    const progressPct = Math.max(0, Math.min(100, (elapsed/avgCycle)*100));
+    let anomaly=null;
+    if(cycles.length>=3){
+      const latest = cycles[cycles.length-1];
+      const priorCycles = cycles.slice(0,-1);
+      const priorAvg = priorCycles.reduce((a,b)=>a+b,0)/priorCycles.length;
+      if(latest < priorAvg*0.8) anomaly = {pct: Math.round((1-latest/priorAvg)*100), latest, priorAvg: Math.round(priorAvg)};
+    }
+    return {status, lastPurchase, avgCycle, daysRemaining, progressPct, anomaly, cycles};
+  }
+  function dailyCost(item){
+    const recs = itemRecords(item.id).filter(r=>r.type==="purchase" && r.price!=null && r.price!=="");
+    const a = analyze(item);
+    if(!a.avgCycle) return 0;
+    let price = null;
+    if(recs.length) price = recs.reduce((s,r)=>s+Number(r.price),0)/recs.length;
+    else if(item.defaultPrice!=null && item.defaultPrice!=="") price = Number(item.defaultPrice);
+    if(price==null) return 0;
+    return price/a.avgCycle;
+  }
+
+  /* ---------- toast ---------- */
+  let toastTimer=null;
+  function showToast(msg){
+    const t=$("#toast"); t.textContent=msg; t.classList.add("show");
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("show"), 2200);
+  }
+
+  /* ---------- modal ---------- */
+  function openModal(title, bodyHtml, opts){
+    opts = opts||{};
+    const overlay = $("#modalOverlay"); const panel = $("#modalPanel");
+    panel.innerHTML = '<div class="modal-head"><h3>'+title+'</h3><button id="modalClose">'+ICON.x+'</button></div>'+bodyHtml;
+    overlay.classList.add("open");
+    $("#modalClose").onclick = closeModal;
+    overlay.onclick = (e)=>{ if(e.target===overlay) closeModal(); };
+    if(opts.onMount) opts.onMount(panel);
+  }
+  function closeModal(){ $("#modalOverlay").classList.remove("open"); }
+
+  /* ---------- API layer (Google Apps Script backend) ---------- */
+  function apiConfigured(){ return CONFIG.API_URL && CONFIG.API_URL.indexOf("PASTE_YOUR_GAS_WEB_APP_URL_HERE")===-1; }
+
+  function applyData(data){
+    if(data.items) state.items = data.items.filter(it=>it.active!==false);
+    if(data.records) state.records = data.records;
+    if(data.settings) state.settings = Object.assign({}, DEFAULT_SETTINGS, data.settings, {
+      categories: (data.settings.categories && data.settings.categories.length) ? data.settings.categories : DEFAULT_SETTINGS.categories
+    });
+    state.ready = true;
+    state.online = true;
+    render();
+  }
+
+  async function fetchAll(){
+    if(!apiConfigured()){ state.ready=true; state.online=false; render(); return; }
+    try{
+      const res = await fetch(CONFIG.API_URL, {method:"GET"});
+      const data = await res.json();
+      applyData(data);
+    }catch(err){
+      state.ready = true; state.online = false; render();
+    }
+  }
+  async function postAction(action, payload){
+    if(!apiConfigured()){ showToast("接続先が設定されていません"); return null; }
+    try{
+      const res = await fetch(CONFIG.API_URL, {
+        method:"POST",
+        headers:{"Content-Type":"text/plain;charset=utf-8"},
+        body: JSON.stringify({action, payload})
+      });
+      const data = await res.json();
+      if(data && data.error){ showToast("エラーが発生しました"); state.online=false; render(); return null; }
+      applyData(data);
+      return data;
+    }catch(err){
+      showToast("通信エラーです。もう一度お試しください");
+      state.online = false; render();
+      return null;
+    }
+  }
+
+  async function addItem(data){ await postAction("addItem", data); }
+  async function updateItem(id, data){ await postAction("updateItem", Object.assign({id}, data)); }
+  async function deleteItem(id){ await postAction("deleteItem", {id}); }
+  async function addRecord(data){ await postAction("addRecord", data); }
+  async function deleteRecord(id){ await postAction("deleteRecord", {id}); }
+  async function saveSettings(patch){
+    const next = Object.assign({}, state.settings, patch);
+    state.settings = next; render();
+    await postAction("saveSettings", next);
+  }
+
+  /* ---------- render: dashboard ---------- */
+  function renderDashboard(){
+    const items = state.items;
+    if(!state.ready){
+      mainEl.innerHTML = '<div class="stat-row">'+[0,1,2].map(()=>'<div class="skel" style="height:64px"></div>').join("")+'</div>'
+        + '<div class="card-list">'+[0,1,2].map(()=>'<div class="skel" style="height:74px"></div>').join("")+'</div>';
+      return;
+    }
+    if(items.length===0){
+      mainEl.innerHTML = '<div class="empty-note">きらすまえに は、シャンプーや洗剤など消耗品の購入サイクルを記録して、なくなる前に知らせてくれるアプリです。<br>まずは消耗品を1つ登録してみましょう。'
+        + '<div><button class="icon-btn primary" id="goAddItem" style="margin:10px auto 0;">'+ICON.plus+'消耗品を登録する</button></div></div>';
+      $("#goAddItem").onclick=()=>{ switchTab("items"); openItemForm(); };
+      return;
+    }
+    const analyzed = items.map(it=>({item:it, a:analyze(it)}));
+    const soon = analyzed.filter(x=>x.a.status==="warning"||x.a.status==="critical").sort((x,y)=>(x.a.daysRemaining??999)-(y.a.daysRemaining??999));
+    const anomalies = analyzed.filter(x=>x.a.anomaly);
+    const totalDaily = items.reduce((s,it)=>s+dailyCost(it),0);
+    const trackedWithData = analyzed.filter(x=>x.a.avgCycle).length;
+
+    let html = "";
+    html += '<div class="stat-row">'
+      + '<div class="stat-tile"><div class="v num">'+items.length+'</div><div class="l">登録アイテム</div></div>'
+      + '<div class="stat-tile"><div class="v num" style="'+(soon.length>0?'color:var(--critical)':'')+'">'+soon.length+'</div><div class="l">まもなく必要</div></div>'
+      + '<div class="stat-tile"><div class="v num">'+yen(totalDaily*30)+'</div><div class="l">今月の消耗品費予測</div></div>'
+      + '</div>';
+
+    html += '<section class="block"><h2>まもなく購入が必要</h2>';
+    html += soon.length===0 ? '<div class="sub">今のところ、すぐに切れそうなものはありません。</div>' : '<div class="card-list">'+soon.map(x=>alertCard(x.item,x.a)).join("")+'</div>';
+    html += '</section>';
+
+    if(anomalies.length){
+      html += '<section class="block"><h2>消費ペースの変化</h2><div class="sub">通常のサイクルより早く無くなっています</div><div class="card-list">';
+      html += anomalies.map(x=>'<div class="anomaly-row">'+ICON.alert+'<div class="t">'+esc(x.item.name)+'<small>通常 約'+x.a.anomaly.priorAvg+'日 → 直近 '+x.a.anomaly.latest+'日（約'+x.a.anomaly.pct+'%速い）</small></div></div>').join("");
+      html += '</div></section>';
+    }
+    if(trackedWithData < items.length){
+      html += '<section class="block"><div class="sub">'+(items.length-trackedWithData)+'件はまだ購入記録が1回以下のため、予測を学習中です。「消耗品」タブから購入を記録すると精度が上がります。</div></section>';
+    }
+    mainEl.innerHTML = html;
+  }
+  function alertCard(item, a){
+    const st = a.status; const days = a.daysRemaining;
+    const daysTxt = days==null ? "学習中" : (days<=0 ? "購入時期です" : "あと約"+days+"日");
+    const pillCls = st==="critical"?"critical":st==="warning"?"warning":"good";
+    return '<div class="icard st-'+st+'" data-item="'+item.id+'">'
+      + '<div class="row1"><div class="title"><span class="catdot" style="background:'+catColor(item.category)+'"></span><span class="iname">'+esc(item.name)+'</span></div><span class="pill '+pillCls+'">'+daysTxt+'</span></div>'
+      + (a.avgCycle ? '<div class="bar-track"><div class="bar-fill '+pillCls+'" style="width:'+a.progressPct.toFixed(0)+'%"></div></div>' : '')
+      + '<div class="meta"><span>前回購入 '+fmtDate(a.lastPurchase)+'</span>'+(a.avgCycle? '<span>平均サイクル 約'+Math.round(a.avgCycle)+'日</span>':'')+'</div></div>';
+  }
+
+  /* ---------- render: items ---------- */
+  function renderItems(){
+    const cats = state.settings.categories||[];
+    let html = '<div class="chips">'+chip("all","すべて", state.filterCat==="all")+cats.map(c=>chip(c.key,c.label,state.filterCat===c.key,c.color)).join("")+'</div>';
+    const filtered = state.items.filter(it=> state.filterCat==="all" || it.category===state.filterCat);
+    if(!state.ready){ html += '<div class="card-list">'+[0,1,2].map(()=>'<div class="skel" style="height:96px"></div>').join("")+'</div>'; mainEl.innerHTML = html; return; }
+    html += filtered.length===0
+      ? '<div class="empty-note">'+(state.items.length===0? "まだ消耗品が登録されていません。" : "このカテゴリにはまだ登録がありません。")+'</div>'
+      : '<div class="card-list">'+filtered.map(it=>itemCard(it)).join("")+'</div>';
+    html += '<button class="fab-add" id="addItemBtn">'+ICON.plus+' 新しい消耗品を登録</button>';
+    mainEl.innerHTML = html;
+
+    $$(".chip").forEach(c=>c.onclick=()=>{ state.filterCat=c.dataset.key; renderItems(); });
+    $("#addItemBtn").onclick = openItemForm;
+    $$(".icard[data-item]").forEach(card=>{
+      card.querySelector(".title").onclick = ()=> openItemDetail(card.dataset.item);
+      const buyBtn = card.querySelector("[data-act=buy]"); const emptyBtn = card.querySelector("[data-act=empty]");
+      if(buyBtn) buyBtn.onclick=(e)=>{e.stopPropagation(); openPurchaseForm(card.dataset.item);};
+      if(emptyBtn) emptyBtn.onclick=(e)=>{e.stopPropagation(); confirmEmptyLog(card.dataset.item);};
+    });
+  }
+  function chip(key,label,active,color){ return '<button class="chip'+(active?" active":"")+'" data-key="'+key+'">'+(color?'<span class="catdot" style="background:'+color+'"></span>':'')+label+'</button>'; }
+  function itemCard(item){
+    const a = analyze(item); const st = a.status;
+    const stCls = st==="critical"?"st-critical":st==="warning"?"st-warning":st==="good"?"st-good":"";
+    const pillCls = st==="critical"?"critical":st==="warning"?"warning":st==="good"?"good":"muted";
+    let daysTxt = st==="unknown"?"記録なし":st==="learning"?"学習中":(a.daysRemaining<=0?"購入時期":"あと約"+a.daysRemaining+"日");
+    return '<div class="icard '+stCls+'" data-item="'+item.id+'">'
+      + '<div class="row1"><div class="title"><span class="catdot" style="background:'+catColor(item.category)+'"></span><span class="iname">'+esc(item.name)+'</span></div><span class="pill '+pillCls+'">'+daysTxt+'</span></div>'
+      + (a.avgCycle ? '<div class="bar-track"><div class="bar-fill '+pillCls+'" style="width:'+a.progressPct.toFixed(0)+'%"></div></div>' : '')
+      + '<div class="meta"><span>前回購入 '+fmtDate(a.lastPurchase)+'</span>'+(a.avgCycle? '<span>平均 約'+Math.round(a.avgCycle)+'日周期</span>':'')+'</div>'
+      + '<div class="actions"><button class="icon-btn primary" data-act="buy">'+ICON.cart+'購入した</button><button class="icon-btn" data-act="empty">'+ICON.empty+'使い切った</button></div></div>';
+  }
+
+  function openItemForm(existing){
+    const cats = state.settings.categories||[];
+    const isEdit = !!existing;
+    const defCat = existing ? existing.category : (cats[0]&&cats[0].key);
+    const body = '<div class="field"><label>名前</label><input type="text" id="fName" placeholder="例：シャンプー" value="'+(existing?esc(existing.name):"")+'"></div>'
+      + '<div class="field"><label>カテゴリ</label><div class="radio-group" id="fCatGroup">'
+      + cats.map(c=>'<label class="radio-chip'+(defCat===c.key?" checked":"")+'"><input type="radio" name="fCat" value="'+c.key+'" '+(defCat===c.key?"checked":"")+'><span class="catdot" style="background:'+c.color+'"></span>'+c.label+'</label>').join("") + '</div></div>'
+      + '<div class="field"><label>標準価格（円・任意）</label><input type="number" id="fPrice" min="0" placeholder="例：480" value="'+(existing&&existing.defaultPrice!=null&&existing.defaultPrice!==""?existing.defaultPrice:"")+'"></div>'
+      + '<div class="field"><label>個別リマインド日数（任意・空欄で共通設定を使用）</label><input type="number" id="fReminder" min="0" placeholder="共通設定：'+state.settings.defaultReminderDays+'日前" value="'+(existing&&existing.reminderDays!=null&&existing.reminderDays!==""?existing.reminderDays:"")+'"></div>'
+      + '<div class="modal-actions">'+(isEdit? '<button class="btn danger" id="fDelete">削除</button>' : '')+'<button class="btn primary" id="fSave">'+(isEdit?"保存":"登録")+'</button></div>';
+    openModal(isEdit?"消耗品を編集":"消耗品を登録", body, { onMount(panel){
+      panel.querySelectorAll(".radio-chip").forEach(chipEl=>{ chipEl.addEventListener("click",()=>{ panel.querySelectorAll(".radio-chip").forEach(c=>c.classList.remove("checked")); chipEl.classList.add("checked"); }); });
+      panel.querySelector("#fSave").onclick = async ()=>{
+        const name = panel.querySelector("#fName").value.trim();
+        if(!name){ showToast("名前を入力してください"); return; }
+        const catInput = panel.querySelector('input[name=fCat]:checked');
+        const category = catInput ? catInput.value : defCat;
+        const priceVal = panel.querySelector("#fPrice").value;
+        const remVal = panel.querySelector("#fReminder").value;
+        const data = { name, category, defaultPrice: priceVal===""? null : Number(priceVal), reminderDays: remVal===""? null : Number(remVal) };
+        if(isEdit) await updateItem(existing.id, data); else await addItem(data);
+        closeModal(); showToast(isEdit?"更新しました":"登録しました");
+      };
+      if(isEdit){
+        panel.querySelector("#fDelete").onclick = ()=> confirmDialog("「"+existing.name+"」を削除しますか？記録は残りますが一覧に表示されなくなります。", async ()=>{ await deleteItem(existing.id); closeModal(); showToast("削除しました"); });
+      }
+    }});
+  }
+  function openPurchaseForm(itemId){
+    const item = state.items.find(i=>i.id===itemId); if(!item) return;
+    const lastPrice = (function(){ const recs = itemRecords(itemId).filter(r=>r.type==="purchase"&&r.price!=null&&r.price!==""); if(recs.length) return recs[recs.length-1].price; return item.defaultPrice; })();
+    const body = '<div class="field"><label>購入日</label><input type="date" id="pDate" value="'+todayStr()+'"></div>'
+      + '<div class="field"><label>金額（円・任意）</label><input type="number" id="pPrice" min="0" placeholder="例：480" value="'+(lastPrice!=null&&lastPrice!==""?lastPrice:"")+'"></div>'
+      + '<div class="modal-actions"><button class="btn primary" id="pSave">記録する</button></div>';
+    openModal(esc(item.name)+" ・ 購入を記録", body, { onMount(panel){
+      panel.querySelector("#pSave").onclick = async ()=>{
+        const date = panel.querySelector("#pDate").value || todayStr();
+        const priceVal = panel.querySelector("#pPrice").value;
+        await addRecord({itemId, type:"purchase", date, price: priceVal===""?null:Number(priceVal)});
+        closeModal(); showToast("購入を記録しました");
+      };
+    }});
+  }
+  function confirmEmptyLog(itemId){
+    const item = state.items.find(i=>i.id===itemId); if(!item) return;
+    confirmDialog('「'+item.name+'」を使い切りましたか？今日の日付で記録します。', async ()=>{ await addRecord({itemId, type:"empty", date: todayStr()}); closeModal(); showToast("記録しました"); }, "使い切ったことにする");
+  }
+  function confirmDialog(msg, onConfirm, confirmLabel){
+    openModal("確認", '<div style="font-size:13.5px;line-height:1.7;margin-bottom:6px;">'+msg+'</div><div class="modal-actions"><button class="btn secondary" id="cCancel">やめる</button><button class="btn danger" id="cOk">'+(confirmLabel||"削除する")+'</button></div>',
+      { onMount(panel){ panel.querySelector("#cCancel").onclick = closeModal; panel.querySelector("#cOk").onclick = onConfirm; }});
+  }
+  function openItemDetail(itemId){
+    const item = state.items.find(i=>i.id===itemId); if(!item) return;
+    const a = analyze(item);
+    const recs = itemRecords(itemId).slice().reverse();
+    const spark = a.cycles && a.cycles.length>=2 ? sparklineSvg(a.cycles) : "";
+    let body = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span class="pill muted">'+catLabel(item.category)+'</span><button class="icon-btn" id="dEdit">'+ICON.pencil+'編集</button></div>';
+    if(a.avgCycle){
+      body += '<div class="stat-row two" style="margin-bottom:12px;"><div class="stat-tile"><div class="v num">'+Math.round(a.avgCycle)+'日</div><div class="l">学習した平均サイクル</div></div>'
+        + '<div class="stat-tile"><div class="v num">'+(a.daysRemaining<=0?"—":a.daysRemaining+"日")+'</div><div class="l">'+(a.daysRemaining<=0?"購入時期です":"次の購入予測まで")+'</div></div></div>';
+      if(spark) body += '<div class="sub" style="margin-bottom:4px;">サイクルの推移（直近ほど重視して学習）</div>'+spark;
+    } else {
+      body += '<div class="sub" style="margin-bottom:10px;">購入記録が2回以上たまると、平均サイクルを自動で学習します。</div>';
+    }
+    body += '<div class="sub" style="margin:14px 0 6px;">記録履歴</div>';
+    body += recs.length===0 ? '<div class="empty-note" style="padding:16px;">まだ記録がありません</div>'
+      : '<div class="tbl-wrap"><table class="plain"><thead><tr><th>日付</th><th>種別</th><th>金額</th><th></th></tr></thead><tbody>'
+        + recs.map(r=>'<tr><td class="num">'+fmtDate(r.date)+'</td><td>'+(r.type==="purchase"?"購入":"使い切り")+'</td><td class="num">'+(r.price!=null&&r.price!==""?yen(r.price):"—")+'</td><td><button data-rec="'+r.id+'" class="icon-btn" style="padding:4px 6px;">'+ICON.trash+'</button></td></tr>').join("")
+        + '</tbody></table></div>';
+    openModal(esc(item.name), body, { onMount(panel){
+      panel.querySelector("#dEdit").onclick = ()=> openItemForm(item);
+      panel.querySelectorAll("[data-rec]").forEach(btn=>{ btn.onclick = ()=> confirmDialog("この記録を削除しますか？", async ()=>{ await deleteRecord(btn.dataset.rec); closeModal(); showToast("削除しました"); }); });
+    }});
+  }
+  function sparklineSvg(cycles){
+    const w=280,h=44,pad=4; const max=Math.max(...cycles), min=Math.min(...cycles); const range=(max-min)||1;
+    const pts = cycles.map((v,i)=>{ const x = pad+(i/(cycles.length-1||1))*(w-pad*2); const y = h-pad-((v-min)/range)*(h-pad*2); return x.toFixed(1)+","+y.toFixed(1); });
+    return '<svg class="sparkline" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none"><polyline points="'+pts.join(" ")+'" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+      + pts.map(p=>{const xy=p.split(",");return '<circle cx="'+xy[0]+'" cy="'+xy[1]+'" r="2.5" fill="var(--accent)"/>';}).join("") + '</svg>';
+  }
+
+  /* ---------- render: cost ---------- */
+  function renderCost(){
+    if(!state.ready){ mainEl.innerHTML = '<div class="stat-row two">'+[0,1].map(()=>'<div class="skel" style="height:64px"></div>').join("")+'</div><div class="skel" style="height:200px"></div>'; return; }
+    const rows = state.items.map(it=>({item:it, daily:dailyCost(it)})).filter(r=>r.daily>0).sort((a,b)=>b.daily-a.daily);
+    const totalDaily = rows.reduce((s,r)=>s+r.daily,0);
+    const noPriceCount = state.items.length - rows.length;
+    let html = '<div class="stat-row two"><div class="stat-tile"><div class="v num">'+yen(totalDaily)+'</div><div class="l">1日あたり</div></div><div class="stat-tile"><div class="v num">'+yen(totalDaily*30)+'</div><div class="l">1か月あたり</div></div></div>';
+    if(rows.length===0){ html += '<div class="empty-note">価格が登録された消耗品がありません。「消耗品」タブでアイテムを編集し、標準価格を入力すると費用が計算されます。</div>'; mainEl.innerHTML = html; return; }
+    const cats = state.settings.categories||[];
+    html += '<section class="block"><h2>アイテム別の月額費用</h2><div class="sub">価格 ÷ 学習した平均サイクルから算出</div>';
+    html += '<div class="legend">'+cats.map(c=>'<div class="li"><span class="dot" style="background:'+c.color+'"></span>'+c.label+'</div>').join("")+'</div>';
+    const max = rows[0].daily;
+    html += rows.map(r=>{
+      const monthly = r.daily*30; const pct = Math.max(4,(r.daily/max)*100);
+      return '<div class="cost-row"><div class="l1"><div class="nm"><span class="catdot" style="background:'+catColor(r.item.category)+'"></span><span>'+esc(r.item.name)+'</span></div><div class="yen"><span class="num">'+yen(monthly)+'</span><small> /月</small></div></div>'
+        + '<div class="cost-bar-track"><div class="cost-bar-fill" style="width:'+pct.toFixed(0)+'%;background:'+catColor(r.item.category)+'"></div></div></div>';
+    }).join("");
+    html += '</section>';
+    if(noPriceCount>0) html += '<div class="sub" style="margin-bottom:16px;">価格未登録のため計算に含まれていないアイテムが'+noPriceCount+'件あります。</div>';
+    html += '<section class="block"><h2>内訳表</h2><div class="tbl-wrap"><table class="plain"><thead><tr><th>アイテム</th><th>カテゴリ</th><th>1日</th><th>1か月</th></tr></thead><tbody>'
+      + rows.map(r=>'<tr><td>'+esc(r.item.name)+'</td><td>'+catLabel(r.item.category)+'</td><td class="num">'+yen(r.daily)+'</td><td class="num">'+yen(r.daily*30)+'</td></tr>').join("")
+      + '</tbody></table></div></section>';
+    mainEl.innerHTML = html;
+  }
+
+  /* ---------- render: settings ---------- */
+  function renderSettings(){
+    const s = state.settings; const cats = s.categories||[];
+    let html = '<div class="set-group"><h3>世帯情報</h3><div class="set-row stack"><div><div class="lab">表示名</div><div class="hint">ダッシュボード上部に表示されます</div></div><input type="text" id="sHouse" value="'+esc(s.houseName)+'"></div></div>';
+    html += '<div class="set-group"><h3>通知設定</h3>'
+      + '<div class="set-row"><div><div class="lab">メール通知</div><div class="hint">なくなる前にメールでお知らせ</div></div><label class="switch"><input type="checkbox" id="sEmailOn" '+(s.emailEnabled?"checked":"")+'><span class="track"></span></label></div>'
+      + '<div class="set-row stack"><div class="lab">通知先メールアドレス</div><input type="email" id="sEmailAddr" placeholder="you@example.com" value="'+esc(s.emailAddress||"")+'"></div>'
+      + '<div class="set-row"><div><div class="lab">何日前に知らせるか</div><div class="hint">アイテムごとに個別設定も可能</div></div><input type="number" id="sReminder" min="0" value="'+s.defaultReminderDays+'"></div>'
+      + '<div class="about">メール通知の自動送信は次のステップです。購入記録が溜まって平均サイクルの学習が進んだら、Google Apps Scriptの時間主導型トリガーで毎日チェックし、メールを送る仕組みを追加できます。</div></div>';
+    html += '<div class="set-group"><h3>カテゴリ管理</h3>'
+      + cats.map(c=>'<div class="cat-edit-row"><span class="catdot" style="background:'+c.color+'"></span><input type="text" data-catkey="'+c.key+'" value="'+esc(c.label)+'"><button data-delcat="'+c.key+'">'+ICON.trash+'</button></div>').join("")
+      + '<div class="cat-edit-row"><input type="text" id="newCatName" placeholder="新しいカテゴリ名"><button id="addCatBtn">'+ICON.plus+'</button></div></div>';
+    html += '<div class="set-group"><h3>データ管理</h3><div style="padding:12px 14px;display:flex;flex-direction:column;gap:8px;">'
+      + '<button class="ghost-btn" id="exportBtn">'+ICON.download+' CSVでエクスポート</button>'
+      + '<button class="danger-btn" id="resetBtn">すべてのデータをリセット</button></div></div>';
+    html += '<div class="set-group"><h3>接続情報</h3><div class="about">データの保存先：Google スプレッドシート（Google Apps Script 経由）<br>接続状態：'+(state.online? '<span style="color:var(--good)">接続中</span>' : '<span style="color:var(--critical)">未接続</span>')+'</div></div>';
+    html += '<div class="about" style="text-align:center;">きらすまえに ・ シェアハウスの消耗品を、無くなる前に。</div>';
+    mainEl.innerHTML = html;
+
+    $("#sHouse").onblur = e=> saveSettings({houseName: e.target.value.trim()||"わが家"});
+    $("#sEmailOn").onchange = e=> saveSettings({emailEnabled: e.target.checked});
+    $("#sEmailAddr").onblur = e=> saveSettings({emailAddress: e.target.value.trim()});
+    $("#sReminder").onblur = e=> saveSettings({defaultReminderDays: Math.max(0, Number(e.target.value)||0)});
+    $$("[data-catkey]").forEach(inp=>{ inp.onblur = e=>{ const key = inp.dataset.catkey; const newCats = cats.map(c=> c.key===key ? Object.assign({},c,{label:e.target.value.trim()||c.label}) : c); saveSettings({categories:newCats}); }; });
+    $$("[data-delcat]").forEach(btn=>{ btn.onclick = ()=>{ const key = btn.dataset.delcat; if(state.items.some(it=>it.category===key)){ showToast("このカテゴリを使用中のアイテムがあります"); return; } confirmDialog("このカテゴリを削除しますか？", ()=>{ saveSettings({categories: cats.filter(c=>c.key!==key)}); closeModal(); }); }; });
+    $("#addCatBtn").onclick = ()=>{
+      const input = $("#newCatName"); const label = input.value.trim(); if(!label) return;
+      const palette = ["#0F8A73","#C17A1F","#A0449C","#3A6FB0","#B04A6A","#5C8A2E"];
+      const key = "c"+Date.now(); const color = palette[cats.length % palette.length];
+      saveSettings({categories: cats.concat([{key,label,color}])}); input.value="";
+    };
+    $("#exportBtn").onclick = exportCsv;
+    $("#resetBtn").onclick = ()=>{
+      confirmDialog("すべてのアイテムと記録を削除します。この操作は取り消せません。本当によろしいですか？", async ()=>{ await postAction("resetAll", {}); closeModal(); showToast("データをリセットしました"); }, "リセットする");
+    };
+  }
+
+  function exportCsv(){
+    const rows = [["アイテム名","カテゴリ","種別","日付","金額"]];
+    state.records.slice().sort((a,b)=>a.date<b.date?-1:1).forEach(r=>{
+      const item = state.items.find(i=>i.id===r.itemId) || {name:"(削除済み)",category:""};
+      rows.push([item.name, catLabel(item.category), r.type==="purchase"?"購入":"使い切り", r.date, r.price!=null&&r.price!==""?r.price:""]);
+    });
+    const csv = rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(",")).join("\r\n");
+    const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "kirasumaeni_records.csv";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    showToast("書き出しました");
+  }
+
+  /* ---------- routing ---------- */
+  function switchTab(tab){ state.tab = tab; $$("#tabbar button").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab)); render(); mainEl.scrollTop = 0; }
+  function render(){
+    houseText.textContent = state.settings.houseName || "わが家";
+    syncDot.className = "sync-dot" + (state.online===true?" ok":state.online===false?" err":"");
+    todayLabel.textContent = fmtDateLong();
+    if(!apiConfigured()){ renderSetupScreen(); return; }
+    if(state.tab==="dashboard") renderDashboard();
+    else if(state.tab==="items") renderItems();
+    else if(state.tab==="cost") renderCost();
+    else if(state.tab==="settings") renderSettings();
+  }
+  function renderSetupScreen(){
+    mainEl.innerHTML = '<div class="setup-screen">まだGoogle Apps ScriptのURLが設定されていません。<br>index.html 内の <b>CONFIG.API_URL</b> に、デプロイしたウェブアプリのURLを貼り付けてから再度お試しください。'
+      + '<code>const CONFIG = { API_URL: "https://script.google.com/macros/s/.../exec" };</code>詳しい手順は README.md を参照してください。</div>';
+  }
+
+  $$("#tabbar button").forEach(b=> b.onclick=()=> switchTab(b.dataset.tab));
+  mainEl.addEventListener("scroll", ()=>{ topbar.classList.toggle("scrolled", mainEl.scrollTop>2); });
+  switchTab("dashboard");
+
+  fetchAll();
+  setInterval(fetchAll, 25000);
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") fetchAll(); });
+})();
+</script>
+</body>
+</html>
