@@ -107,6 +107,14 @@
   .icard.st-critical::before{background:var(--critical);}
   .icard.st-warning::before{background:var(--warning);}
   .icard.st-good::before{background:var(--good);}
+  /* swipe-to-delete (消耗品タブのカード) */
+  .icard.swipeable{padding:0;}
+  .icard-swipebg{position:absolute;inset:0;background:var(--critical);color:#fff;display:flex;align-items:center;gap:7px;padding-left:22px;font-size:13px;font-weight:700;}
+  .icard-swipebg svg{width:18px;height:18px;}
+  .icard-content{position:relative;z-index:1;background:var(--surface);padding:12px 13px;display:flex;flex-direction:column;gap:8px;touch-action:pan-y;}
+  .icard-content.st-critical{border-left:4px solid var(--critical);}
+  .icard-content.st-warning{border-left:4px solid var(--warning);}
+  .icard-content.st-good{border-left:4px solid var(--good);}
   .icard .row1{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .icard .title{display:flex;align-items:center;gap:7px;min-width:0;}
   .catdot{width:8px;height:8px;border-radius:50%;flex:none;}
